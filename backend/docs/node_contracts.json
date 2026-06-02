@@ -1,0 +1,557 @@
+{
+  "orchestrator_agent": {
+    "purpose": "Internal workflow coordinator. Receives the single user-facing request, initializes pipeline state, routes between agents based on workflow_status, enforces iteration budgets, and emits agent_trace entries. Never exposed to the user; no direct invocation or slash commands.",
+    "inputs": [
+      "user_request",
+      "conversation_history",
+      "repository_id",
+      "repository_metadata",
+      "workflow_status",
+      "iteration_count",
+      "failure_reason"
+    ],
+    "outputs": [
+      "workflow_status",
+      "active_task",
+      "agent_trace",
+      "iteration_count",
+      "failure_reason"
+    ],
+    "tools": [
+      "read_workflow_state",
+      "write_workflow_state",
+      "emit_agent_trace",
+      "check_iteration_budget"
+    ],
+    "success_criteria": [
+      "Exactly one entry point from user request into the pipeline",
+      "Each downstream agent receives only its declared inputs from shared state",
+      "Iteration budgets enforced before repair and plan-revision loops",
+      "Terminal states (completed, failed, cancelled) are unambiguous",
+      "Full agent_trace available for debugging without exposing internals to user"
+    ],
+    "failure_modes": [
+      "Infinite loop between review and repair without budget guard",
+      "Stale workflow_status causing wrong agent activation",
+      "State key mismatch between producer and consumer agents",
+      "User request forwarded without normalization or truncation policy"
+    ]
+  },
+  "goal_agent": {
+    "purpose": "Convert ambiguous natural-language user requests into precise, bounded engineering goals. First reasoning step after orchestrator handoff. Does not call other agents directly; writes structured goals to shared state for downstream consumption.",
+    "inputs": [
+      "user_request",
+      "conversation_history",
+      "repository_metadata",
+      "repository_language",
+      "repository_framework",
+      "user_changes"
+    ],
+    "outputs": ["goals"],
+    "tools": [
+      "classify_request_intent",
+      "extract_constraints_from_history",
+      "detect_scope_ambiguity"
+    ],
+    "success_criteria": [
+      "Goals are specific, actionable, and testable",
+      "Goals are measurable with explicit done conditions",
+      "In-scope and out-of-scope boundaries are documented in goals",
+      "Hard constraints (security, performance, compatibility) are extracted verbatim",
+      "Non-goals are listed to prevent scope creep",
+      "Assumptions are explicit and flagged when confidence is low",
+      "Request classified as feature, bugfix, refactor, docs, or chore"
+    ],
+    "failure_modes": [
+      "Request ambiguity left unresolved without clarification flag in goals",
+      "Scope inferred incorrectly from partial conversation history",
+      "Implicit constraints missed (auth, backwards compatibility, migrations)",
+      "Over-scoped goals that trigger unnecessary multi-agent work",
+      "Under-scoped goals missing cross-layer impact (API + UI + schema)"
+    ]
+  },
+  "context_agent": {
+    "purpose": "Assemble repository intelligence and conversation-derived context into a bounded relevant_context package for planning and review. Runs after goal extraction; read-only against the codebase.",
+    "inputs": [
+      "goals",
+      "user_request",
+      "repository_metadata",
+      "repository_root",
+      "repository_language",
+      "repository_framework",
+      "code_files_modified_or_changed"
+    ],
+    "outputs": ["relevant_context"],
+    "tools": [
+      "semantic_search",
+      "query_repository",
+      "read_file",
+      "get_call_chain",
+      "get_architecture_graph",
+      "list_directory",
+      "grep_symbols",
+      "build_context_package"
+    ],
+    "success_criteria": [
+      "Context package fits within token budget with ranked relevance",
+      "Entry points, owners, and call chains for affected areas identified",
+      "Existing patterns and conventions surfaced with file references",
+      "Dependencies and integration surfaces documented",
+      "Stale or generated artifacts excluded unless explicitly relevant",
+      "Missing context gaps listed explicitly for planner to resolve"
+    ],
+    "failure_modes": [
+      "Context window overflow from unfocused retrieval",
+      "Wrong subsystem selected due to naming collision or ambiguous goals",
+      "Critical convention files omitted (lint config, CI, schema migrations)",
+      "Over-reliance on single file without architectural neighborhood",
+      "Hallucinated file paths included without read_file verification"
+    ]
+  },
+  "planner_agent": {
+    "purpose": "Generate an implementation strategy and step-by-step plan using goals and repository intelligence. Produces a plan artifact for review before any code is written. Internal only; output consumed by review_plan_agent and task_divider_agent.",
+    "inputs": ["goals", "relevant_context", "decision_memory", "review_plan"],
+    "outputs": ["plan"],
+    "tools": [
+      "build_context_package",
+      "semantic_search",
+      "get_call_chain",
+      "get_architecture_graph",
+      "read_file",
+      "query_repository",
+      "estimate_change_surface"
+    ],
+    "success_criteria": [
+      "Plan is feasible within existing architecture and conventions",
+      "Plan aligns with repository patterns found in relevant_context",
+      "File-level change list with rationale for each touched path",
+      "Cross-layer dependencies identified (frontend, backend, database, infra)",
+      "Explicit completion criteria and verification steps per plan step",
+      "Rollback or migration strategy documented when schema or API changes",
+      "Risk register with mitigations for high-impact steps",
+      "Revised plan addresses all blocking items from prior review_plan feedback"
+    ],
+    "failure_modes": [
+      "Overengineering or unnecessary abstractions for the stated goals",
+      "Architecture mismatch with established module boundaries",
+      "Incorrect assumptions about APIs, types, or data models",
+      "Incomplete dependency analysis across services or packages",
+      "Plan steps too coarse for parallel task_divider_agent split",
+      "Plan ignores review_plan feedback on revision cycles"
+    ]
+  },
+  "review_plan_agent": {
+    "purpose": "Critique the implementation plan before coding begins. Acts as internal plan gate: approve for task division or return structured revision requests to planner_agent. Skeptical by default; favors minimal viable change.",
+    "inputs": [
+      "plan",
+      "goals",
+      "relevant_context",
+      "decision_memory",
+      "iteration_count"
+    ],
+    "outputs": ["review_plan", "review_issues"],
+    "tools": [
+      "semantic_search",
+      "get_architecture_graph",
+      "read_file",
+      "query_repository",
+      "compare_plan_to_goals"
+    ],
+    "success_criteria": [
+      "Hidden risks and blast radius identified before implementation",
+      "Unnecessary complexity flagged with simpler alternatives",
+      "Verdict is explicit: approve for tasks or revise plan",
+      "Each review_issue has severity, affected area, and suggested fix",
+      "Plan revision feedback is actionable without re-deriving goals",
+      "Iteration count respected; escalation path defined at budget limit"
+    ],
+    "failure_modes": [
+      "Missed architectural violations or boundary crossings",
+      "Unnecessary complexity approved without challenge",
+      "Vague review_plan that forces planner to guess intent",
+      "False approval when goals are not fully covered by plan",
+      "Blocking issues omitted from review_issues structured output"
+    ]
+  },
+  "task_divider_agent": {
+    "purpose": "Decompose an approved plan into specialized, parallelizable implementation tasks with explicit ordering, shared contracts, and ownership. Sole producer of frontend_tasks, backend_tasks, and database_tasks.",
+    "inputs": ["plan", "goals", "relevant_context"],
+    "outputs": ["frontend_tasks", "backend_tasks", "database_tasks"],
+    "tools": [
+      "extract_task_graph",
+      "identify_shared_contracts",
+      "assign_task_ownership"
+    ],
+    "success_criteria": [
+      "Tasks are independent within each lane where parallelism is safe",
+      "Cross-lane dependencies explicit (e.g. API contract before UI wiring)",
+      "Each task has acceptance criteria traceable to plan steps",
+      "Shared interfaces (types, endpoints, events) defined once in task metadata",
+      "Workload balanced; no lane overloaded with unrelated work",
+      "Empty task dicts emitted for unaffected layers to simplify downstream routing"
+    ],
+    "failure_modes": [
+      "Overlapping file ownership between backend and frontend tasks",
+      "Missing task dependencies causing integration_agent conflicts",
+      "API contract undefined while UI tasks assume response shape",
+      "Database migration sequenced after code that depends on new schema",
+      "Tasks too granular, causing excessive agent handoffs and trace noise"
+    ]
+  },
+  "backend_agent": {
+    "purpose": "Implement backend functionality: services, APIs, business logic, and server-side integration. Operates only on backend_tasks; respects existing repository architecture and writes patches to shared state.",
+    "inputs": [
+      "backend_tasks",
+      "working_context",
+      "relevant_context",
+      "plan",
+      "decision_memory"
+    ],
+    "outputs": ["backend_result", "patches"],
+    "tools": [
+      "read_file",
+      "list_directory",
+      "semantic_search",
+      "query_repository",
+      "get_call_chain",
+      "grep_symbols",
+      "write_patch",
+      "run_typecheck"
+    ],
+    "success_criteria": [
+      "All backend_tasks acceptance criteria satisfied",
+      "Code compiles and typechecks for touched backend packages",
+      "Existing conventions followed (naming, error handling, logging)",
+      "Minimal file modifications; no drive-by refactors",
+      "Public API changes match shared contracts from task_divider_agent",
+      "No hallucinated imports, modules, or external APIs",
+      "backend_result summarizes changes, risks, and open questions"
+    ],
+    "failure_modes": [
+      "Breaking existing functionality or public API without migration path",
+      "Incorrect integration with auth, middleware, or persistence layers",
+      "Unused or dead code generation",
+      "Hallucinated APIs, env vars, or third-party SDK methods",
+      "Patches conflict with concurrent frontend or database agent outputs",
+      "Behavior change disguised as refactor"
+    ]
+  },
+  "frontend_agent": {
+    "purpose": "Implement frontend functionality: components, pages, state management, routing, and client-side integration. Operates only on frontend_tasks; produces UI patches aligned with design system and API contracts.",
+    "inputs": [
+      "frontend_tasks",
+      "working_context",
+      "relevant_context",
+      "plan",
+      "decision_memory"
+    ],
+    "outputs": ["frontend_result", "patches"],
+    "tools": [
+      "read_file",
+      "list_directory",
+      "query_repository",
+      "component_search",
+      "semantic_search",
+      "grep_symbols",
+      "write_patch",
+      "run_build"
+    ],
+    "success_criteria": [
+      "All frontend_tasks acceptance criteria satisfied",
+      "UI integrates with existing routing, layout, and auth flows",
+      "Consistent component and styling patterns from codebase",
+      "Client calls match backend API contracts; error and loading states handled",
+      "Build passes for affected frontend packages",
+      "Accessibility and responsive behavior preserved or improved where touched",
+      "frontend_result documents UX decisions and manual test steps"
+    ],
+    "failure_modes": [
+      "Broken UI, layout regression, or missing error boundaries",
+      "Inconsistent styling versus design tokens or component library",
+      "Routing failures or broken deep links",
+      "Client assumes API fields not present in backend contract",
+      "Hardcoded values that should be config or env-driven",
+      "Patches touch unrelated files outside frontend_tasks scope"
+    ]
+  },
+  "database_agent": {
+    "purpose": "Modify schema, migrations, ORM models, and persistence layer safely. Operates only on database_tasks; prioritizes backward-compatible migrations and data integrity.",
+    "inputs": [
+      "database_tasks",
+      "working_context",
+      "relevant_context",
+      "plan",
+      "backend_result"
+    ],
+    "outputs": ["database_result", "patches"],
+    "tools": [
+      "read_schema",
+      "read_migrations",
+      "read_file",
+      "query_repository",
+      "write_patch",
+      "validate_migration_sql"
+    ],
+    "success_criteria": [
+      "All database_tasks acceptance criteria satisfied",
+      "Schema valid against project migration tooling",
+      "Migrations are reversible or downgrade path documented",
+      "No silent data loss; destructive changes explicitly flagged",
+      "Indexes and constraints appropriate for expected query patterns",
+      "ORM/model layer stays in sync with migration files",
+      "database_result lists migration order and deployment notes"
+    ],
+    "failure_modes": [
+      "Migration failure on existing production-like data shapes",
+      "Data loss risk from DROP, TRUNCATE, or non-null without default",
+      "Invalid foreign keys or orphaned relationship definitions",
+      "Migration sequenced incorrectly relative to backend code expectations",
+      "Dialect-specific SQL incompatible with project database engine",
+      "Schema drift between models and raw SQL migrations"
+    ]
+  },
+  "integration_agent": {
+    "purpose": "Merge parallel outputs from implementation agents into one coherent integrated_state. Resolves patch overlaps, validates cross-layer contracts, and blocks downstream testing if integration is unsafe.",
+    "inputs": [
+      "frontend_result",
+      "backend_result",
+      "database_result",
+      "patches",
+      "plan",
+      "code_files_modified_or_changed"
+    ],
+    "outputs": [
+      "integrated_state",
+      "patches",
+      "code_files_modified_or_changed"
+    ],
+    "tools": [
+      "merge_patches",
+      "dependency_checker",
+      "read_diff",
+      "validate_api_contract_alignment",
+      "detect_patch_conflicts"
+    ],
+    "success_criteria": [
+      "No conflicting modifications to the same file regions",
+      "Cross-layer compatibility verified (types, endpoints, schema, UI bindings)",
+      "Unified patch set ready for testing_agent execution",
+      "integrated_state includes merged summary and conflict resolution log",
+      "code_files_modified_or_changed is deduplicated and complete",
+      "Integration blocked with explicit failure_reason when conflicts are unresolvable"
+    ],
+    "failure_modes": [
+      "Patch conflicts silently resolved with behavior loss",
+      "Broken dependencies between merged frontend and backend changes",
+      "Partial merge leaving repository in non-compilable intermediate state",
+      "API response shape mismatch after merge",
+      "Duplicate or orphaned migration files in merged output"
+    ]
+  },
+  "testing_agent": {
+    "purpose": "Validate integrated changes through targeted test generation, execution, lint, build, and typecheck. Gates progression to code_review_agent or routes failures to repair_agent.",
+    "inputs": [
+      "integrated_state",
+      "patches",
+      "code_files_modified_or_changed",
+      "plan",
+      "goals"
+    ],
+    "outputs": ["tests_generated", "test_results"],
+    "tools": [
+      "generate_tests",
+      "run_tests",
+      "run_linter",
+      "run_build",
+      "run_typecheck",
+      "select_tests_for_diff",
+      "parse_test_output"
+    ],
+    "success_criteria": [
+      "Tests pass for affected packages and changed code paths",
+      "Build succeeds for full project or declared affected workspace",
+      "No critical lint or type errors introduced by changes",
+      "New tests cover acceptance criteria from goals where practical",
+      "test_results include failing file, line, and stderr for repair_agent",
+      "Flaky tests identified and not conflated with regression failures"
+    ],
+    "failure_modes": [
+      "Compilation failure undetected before test run",
+      "Test failure root cause not captured in structured test_results",
+      "Full suite run when selective testing would suffice, wasting budget",
+      "False green from skipped or misconfigured test targets",
+      "Lint rules ignored for generated or patched files"
+    ]
+  },
+  "code_review_agent": {
+    "purpose": "Perform senior-engineer code review on integrated changes and test outcomes. Focuses on correctness, maintainability, security basics, and alignment with plan. Loops with skeptic_review_agent until findings are consolidated.",
+    "inputs": [
+      "integrated_state",
+      "test_results",
+      "plan",
+      "goals",
+      "patches",
+      "review_issues"
+    ],
+    "outputs": ["review_issues"],
+    "tools": [
+      "read_diff",
+      "query_repository",
+      "read_file",
+      "check_security_patterns",
+      "compare_diff_to_plan"
+    ],
+    "success_criteria": [
+      "Security issues identified (injection, auth bypass, secret leakage)",
+      "Maintainability assessed: naming, duplication, error handling",
+      "Architecture validated against plan and repository boundaries",
+      "Each issue has severity, location, and recommended fix",
+      "Verdict routes to repair_agent or productionize_agent explicitly",
+      "Prior review_issues updated or resolved with rationale, not duplicated"
+    ],
+    "failure_modes": [
+      "Missed logic bug covered by passing but insufficient tests",
+      "Missed security issue in new surface area",
+      "Incorrect approval despite failing or skipped tests",
+      "Nitpick flood obscuring blocking defects",
+      "Duplicate findings across code_review and skeptic loops without dedup"
+    ]
+  },
+  "skeptic_review_agent": {
+    "purpose": "Adversarial second opinion on integrated changes. Challenges assumptions, hunts edge cases, scalability traps, and production failure modes. Complements code_review_agent; does not duplicate style nits.",
+    "inputs": [
+      "integrated_state",
+      "review_issues",
+      "test_results",
+      "plan",
+      "goals",
+      "skeptic_findings"
+    ],
+    "outputs": ["skeptic_findings"],
+    "tools": [
+      "query_repository",
+      "read_diff",
+      "read_file",
+      "analyze_blast_radius",
+      "enumerate_edge_cases"
+    ],
+    "success_criteria": [
+      "Edge cases documented with reproduction or scenario description",
+      "Security concerns beyond baseline lint (trust boundaries, privilege escalation)",
+      "Scalability and operational concerns identified (N+1, missing timeouts, observability)",
+      "Findings prioritized; false positives marked with low confidence",
+      "Assumptions in plan or implementation explicitly challenged with evidence",
+      "skeptic_findings deduplicated against existing review_issues"
+    ],
+    "failure_modes": [
+      "False positives dominating signal without confidence scoring",
+      "Missed critical edge case in error or concurrency paths",
+      "Rubber-stamping after code_review_agent approval",
+      "Theoretical risks listed without tie to actual changed code",
+      "Duplicate skeptic_findings across loop iterations"
+    ]
+  },
+  "repair_agent": {
+    "purpose": "Resolve failures from testing_agent, code_review_agent, and skeptic_review_agent. Applies targeted patches and returns control to testing_agent. Bounded by iteration budget from orchestrator.",
+    "inputs": [
+      "review_issues",
+      "skeptic_findings",
+      "test_results",
+      "integrated_state",
+      "patches",
+      "repair_history",
+      "current_repair_reason",
+      "iteration_count"
+    ],
+    "outputs": [
+      "repair_history",
+      "patches",
+      "integrated_state",
+      "current_repair_reason"
+    ],
+    "tools": [
+      "read_file",
+      "read_diff",
+      "write_patch",
+      "query_repository",
+      "run_tests",
+      "run_typecheck"
+    ],
+    "success_criteria": [
+      "Root cause addressed, not symptom masked",
+      "All blocking review_issues and test failures resolved or explicitly deferred with reason",
+      "No new failures introduced in locally verified paths",
+      "repair_history entry documents issue, fix, and verification attempt",
+      "Iteration budget respected; escalates via failure_reason when exhausted",
+      "Patches minimal and scoped to reported defects"
+    ],
+    "failure_modes": [
+      "Repeated failure on same root cause without strategy change",
+      "Regression introduced in unrelated code",
+      "Fix bypasses test without updating test expectations legitimately",
+      "Repair loop thrashing between conflicting review findings",
+      "Silent deferral of blocking issues without failure_reason escalation"
+    ]
+  },
+  "productionize_agent": {
+    "purpose": "Harden accepted changes for maintainability after functional approval. Improves readability, typing, logging, and structure without altering observable behavior. Final code-quality pass before documentation.",
+    "inputs": ["integrated_state", "patches", "test_results", "plan"],
+    "outputs": ["production_changes", "patches"],
+    "tools": [
+      "read_diff",
+      "query_repository",
+      "read_file",
+      "write_patch",
+      "run_linter",
+      "run_typecheck"
+    ],
+    "success_criteria": [
+      "Readability improved without semantic behavior change",
+      "Logging and error messages actionable for production debugging",
+      "Typing strengthened where project uses static analysis",
+      "Dead code and debug artifacts removed",
+      "All tests still pass after productionize patches",
+      "production_changes documents each non-functional improvement and rationale"
+    ],
+    "failure_modes": [
+      "Unnecessary refactoring expanding diff beyond review scope",
+      "Behavior change introduced via renamed logic or altered defaults",
+      "Over-logging causing noise or PII leakage",
+      "Productionize pass invalidates prior test_results without re-run flag"
+    ]
+  },
+  "documentation_agent": {
+    "purpose": "Generate developer-facing documentation for the completed change set. Produces docs artifact for user-visible summary; does not expose internal agent names or pipeline details.",
+    "inputs": [
+      "production_changes",
+      "integrated_state",
+      "plan",
+      "goals",
+      "patches",
+      "test_results"
+    ],
+    "outputs": ["docs"],
+    "tools": [
+      "read_diff",
+      "read_file",
+      "query_repository",
+      "generate_changelog_entry",
+      "generate_migration_notes"
+    ],
+    "success_criteria": [
+      "User-visible summary explains what changed and why, in plain language",
+      "API and schema changes documented with before/after examples",
+      "Migration and deployment notes included when database or config changed",
+      "Manual verification steps listed for QA or developer smoke test",
+      "Breaking changes flagged prominently with upgrade instructions",
+      "Internal agent pipeline details omitted from user-facing docs"
+    ],
+    "failure_modes": [
+      "Missing documentation for touched public surfaces",
+      "Incorrect documentation contradicting actual diff",
+      "Migration steps omitted for schema or env var changes",
+      "Internal agent or state key names leaked into user-facing output",
+      "Docs describe planned but unimplemented steps from stale plan"
+    ]
+  }
+}

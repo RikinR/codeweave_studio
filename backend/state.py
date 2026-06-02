@@ -1,4 +1,43 @@
 from typing import TypedDict
 
 class StudioState(TypedDict):
-    msg: str
+    repository_id: str
+    repository_name: str
+    repository_language: str
+    repository_framework: str
+    
+    user_request: str
+    goals : dict
+    relevent_context : dict
+    working_context : dict
+    plan : dict
+    review_plan :str
+    frontend_tasks : dict
+    backend_tasks : dict
+    database_tasks : dict
+    frontend_result : dict
+    backend_result : dict
+    database_result : dict
+    integrated_state: dict
+    tests_generated : dict
+    test_results: dict
+    review_issues: list
+    skeptic_findings: list
+    repair_history: list
+    current_repair_reason: str
+    production_changes: dict
+    docs: dict
+    iteration_count: int
+    code_files_modified_or_changed : list
+    user_changes: dict
+    conversation_history: list
+    decision_memory: list
+    active_task: dict
+    patches: dict
+    agent_trace: list
+    token_usage: dict
+    metrics: dict
+    failure_reason: str | None
+    workflow_status: str
+    current_branch: str
+    repository_root: str
