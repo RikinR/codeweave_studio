@@ -1,6 +1,6 @@
 from typing import TypedDict
 
-class StudioState(TypedDict):
+class StudioState(TypedDict, total=False):
     repository_id: str
     repository_name: str
     repository_language: str
@@ -41,3 +41,4 @@ class StudioState(TypedDict):
     workflow_status: str
     current_branch: str
     repository_root: str
+    needs_changes: bool

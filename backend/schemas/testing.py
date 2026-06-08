@@ -6,6 +6,14 @@ class TestFailure(BaseModel):
     test_name: str
     error_message: str
 
+class GeneratedTest(BaseModel):
+    file_path: str
+    test_name: str
+    description: str
+
+class TestsGeneratedOutput(BaseModel):
+    tests: list[GeneratedTest]
+
 class TestResult(BaseModel):
     build_status: Literal[
         "passed",
