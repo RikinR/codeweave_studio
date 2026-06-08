@@ -1,4 +1,9 @@
-venv
 .vscode
 __pycache__
 pyrightconfig.json
+backend/.env
+backend/.venv
+backend/infra/codeweave/models/
+backend/infra/codeweave/data/
+backend/infra/codeweave/logs/
+.DS_Store
