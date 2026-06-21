@@ -6,6 +6,8 @@ from state import StudioState
 
 
 def goal_agent(state: StudioState):
+    print("\nGOAL AGENT\n")
+    print(state.get("user_request"))
     model = GoalModel()
     user_message = build_user_message(
         user_request=state.get("user_request"),
