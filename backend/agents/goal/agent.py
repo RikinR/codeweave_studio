@@ -1,3 +1,5 @@
+import time
+
 from agents.common import build_user_message, invoke_and_parse
 from agents.goal.model import GoalModel
 from agents.goal.prompt import SYSTEM_PROMPT
@@ -20,5 +22,5 @@ def goal_agent(state: StudioState):
     goal = invoke_and_parse(model, SYSTEM_PROMPT, user_message, GoalOutput)
     return {
         "goals": goal.model_dump(),
-        "workflow_status": "goal_completed",
+        "workflow_status": ["goal_completed"],
     }

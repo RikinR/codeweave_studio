@@ -18,5 +18,5 @@ def documentation_agent(state: StudioState):
     docs = invoke_and_parse(model, SYSTEM_PROMPT, user_message, DocumentationOutput)
     return {
         "docs": docs.model_dump(),
-        "workflow_status": "completed",
+        "workflow_status": ["completed"],
     }

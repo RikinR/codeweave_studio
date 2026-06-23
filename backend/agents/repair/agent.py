@@ -58,5 +58,5 @@ def repair_agent(state: StudioState):
         "iteration_count": iteration_count,
         "needs_changes": len(unresolved) > 0,
         "failure_reason": unresolved[0] if unresolved else None,
-        "workflow_status": "repair_completed",
+        "workflow_status": ["repair_completed"],
     }

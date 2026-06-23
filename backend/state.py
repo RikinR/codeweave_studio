@@ -1,4 +1,5 @@
-from typing import TypedDict
+from typing import TypedDict, Annotated
+from operator import add
 
 class StudioState(TypedDict, total=False):
     repository_id: str
@@ -33,12 +34,12 @@ class StudioState(TypedDict, total=False):
     conversation_history: list
     decision_memory: list
     active_task: dict
-    patches: dict
+    patches: Annotated[list, add]
     agent_trace: list
     token_usage: dict
     metrics: dict
     failure_reason: str | None
-    workflow_status: str
+    workflow_status: Annotated[list[str], add]
     current_branch: str
     repository_root: str
     needs_changes: bool

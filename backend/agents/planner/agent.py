@@ -4,12 +4,14 @@ from agents.planner.prompt import SYSTEM_PROMPT
 from schemas.plan import PlanOutput
 from state import StudioState
 from tools.codeweave_intelligence_tool import CodeweaveIntelligenceTool
+import time
 
 tool = CodeweaveIntelligenceTool()
 
 def planner_agent(state: StudioState):
     print("\nPLANNER AGENT\n")
     print(state.get("goals"))
+    print(state.get("relevent_context"))
     print(tool.find_related_files())
     print(tool.get_repository_map())
     model = PlannerModel()
@@ -18,15 +20,18 @@ def planner_agent(state: StudioState):
         related_files = tool.find_related_files(),
         repository_map =tool.get_repository_map(),
         dependency_graph = tool.get_dependency_graph(),
+        current_plan = state.get("plan"),
         review_issues=state.get("review_issues"),
         review_plan=state.get("review_plan"),
-        #relevent_context=state.get("relevent_context"),
+        relevent_context=state.get("relevent_context"),
         #decision_memory=state.get("decision_memory"),
         #repository_language=state.get("repository_language"),
         #repository_framework=state.get("repository_framework"),
     )
+    time.sleep(30)
     plan = invoke_and_parse(model, SYSTEM_PROMPT, user_message, PlanOutput)
+    state["needs_changes"] = False
     return {
         "plan": plan.model_dump(),
-        "workflow_status": "plan_generated",
+        "workflow_status": ["plan_generated"],
     }

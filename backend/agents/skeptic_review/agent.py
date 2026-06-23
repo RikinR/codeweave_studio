@@ -19,5 +19,5 @@ def skeptic_review_agent(state: StudioState):
     output = invoke_and_parse(model, SYSTEM_PROMPT, user_message, SkepticReviewOutput)
     return {
         "skeptic_findings": [finding.model_dump() for finding in output.findings],
-        "workflow_status": "skeptic_review_completed",
+        "workflow_status": ["skeptic_review_completed"],
     }

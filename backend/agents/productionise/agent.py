@@ -35,5 +35,5 @@ def productionise_agent(state: StudioState):
             "changes": [change.model_dump() for change in result.changes],
         },
         "patches": merge_patch_dicts(state.get("patches"), polish_patches),
-        "workflow_status": "productionised",
+        "workflow_status": ["productionised"],
     }

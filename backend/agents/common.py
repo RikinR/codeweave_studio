@@ -1,6 +1,7 @@
 import json
 import re
 from typing import Any, TypeVar
+from state import StudioState
 
 from pydantic import BaseModel, ValidationError
 
@@ -107,7 +108,7 @@ def patches_from_implementation_result(result: dict | None) -> dict[str, dict]:
         return patches_to_dict(patches)
     return {}
 
-def merge_patch_dicts(*patch_dicts: dict[str, dict] | None) -> dict[str, dict]:
+def merge_patch_dicts(*patch_dicts) -> dict[str, dict]:
     merged: dict[str, dict] = {}
     for patch_dict in patch_dicts:
         if not patch_dict:
@@ -122,7 +123,7 @@ def merge_patch_dicts(*patch_dicts: dict[str, dict] | None) -> dict[str, dict]:
                 merged[file_path] = patch
     return merged
 
-def collect_lane_patches(state: dict) -> dict[str, dict]:
+def collect_lane_patches(state: StudioState) -> dict[str, dict]:
     return merge_patch_dicts(
         patches_from_implementation_result(state.get("frontend_result")),
         patches_from_implementation_result(state.get("backend_result")),
@@ -149,7 +150,7 @@ def sanitize_patch_list(patches: list[Any]) -> tuple[list[dict], list[str]]:
             rejected.append(file_path)
     return valid, rejected
 
-def finalize_implementation_output(result: Any) -> tuple[dict, dict[str, dict]]:
+def finalize_implementation_output(result: Any):
     dumped = result.model_dump()
     valid, rejected = sanitize_patch_list(dumped.get("patches", []))
     dumped["patches"] = valid
@@ -158,11 +159,11 @@ def finalize_implementation_output(result: Any) -> tuple[dict, dict[str, dict]]:
         dumped["risks"] = list(dumped.get("risks", [])) + [
             f"Rejected invalid patches for: {', '.join(rejected)}"
         ]
-    return dumped, patches_to_dict(valid)
+    return dumped, valid
 
 def skipped_lane_response(result_key: str, workflow_status: str) -> dict:
     return {
         result_key: EMPTY_IMPLEMENTATION_RESULT,
         "patches": {},
-        "workflow_status": workflow_status,
+        "workflow_status": [workflow_status],
     }

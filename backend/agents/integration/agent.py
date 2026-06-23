@@ -54,5 +54,5 @@ def integration_agent(state: StudioState):
         "patches": final_patches,
         "code_files_modified_or_changed": merged_files,
         "failure_reason": failure_reason,
-        "workflow_status": "integration_blocked" if integration_blocked else "integration_completed",
+        "workflow_status": ["integration_blocked"] if integration_blocked else ["integration_completed"],
     }

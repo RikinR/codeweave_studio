@@ -36,7 +36,7 @@ def testing_agent(state: StudioState):
                 ],
             },
             "needs_changes": True,
-            "workflow_status": "testing_failed",
+            "workflow_status": ["testing_failed"],
         }
 
     invalid_paths = invalid_patch_paths(patches)
@@ -60,7 +60,7 @@ def testing_agent(state: StudioState):
                 ],
             },
             "needs_changes": True,
-            "workflow_status": "testing_failed",
+            "workflow_status": ["testing_failed"],
         }
 
     model = TestingModel()
@@ -82,5 +82,5 @@ def testing_agent(state: StudioState):
         "tests_generated": output.tests_generated.model_dump(),
         "test_results": output.test_results.model_dump(),
         "needs_changes": has_failures,
-        "workflow_status": "testing_failed" if has_failures else "testing_passed",
+        "workflow_status": ["testing_failed"] if has_failures else ["testing_passed"],
     }

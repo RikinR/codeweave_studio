@@ -1,3 +1,5 @@
+import time
+
 from agents.common import build_user_message, invoke_and_parse
 from agents.review_plan.model import ReviewPlannerModel
 from agents.review_plan.prompt import SYSTEM_PROMPT
@@ -9,7 +11,15 @@ tool = CodeweaveIntelligenceTool()
 
 def review_planner_agent(state: StudioState):
     print("\nREVIEW PLANNER AGENT\n")
+    if state.get("needs_changes") :
+        print("skipping review plan cause already done")
+        return {
+            "needs_changes": False,
+            "workflow_status": ["plan_approved"]
+            }
+    
     print(state.get("plan"))
+    print(state.get("relevent_context"))
     print(tool.find_related_files())
     print(tool.get_repository_map())
     model = ReviewPlannerModel()
@@ -19,14 +29,15 @@ def review_planner_agent(state: StudioState):
         repository_map =tool.get_repository_map(),
         dependency_graph = tool.get_dependency_graph(),
         related_files = tool.find_related_files(),
-        # relevent_context=state.get("relevent_context"),
+        relevent_context=state.get("relevent_context"),
         # decision_memory=state.get("decision_memory"),
         # iteration_count=state.get("iteration_count"),
     )
+    time.sleep(30)
     review = invoke_and_parse(model, SYSTEM_PROMPT, user_message, ReviewPlanOutput)
     return {
         "review_plan": review.review_plan,
         "review_issues": [issue.model_dump() for issue in review.issues],
         "needs_changes": not review.approved,
-        "workflow_status": "plan_approved" if review.approved else "plan_needs_revision",
+        "workflow_status": ["plan_approved"] if review.approved else ["plan_needs_revision"],
     }

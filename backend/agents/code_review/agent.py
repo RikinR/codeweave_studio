@@ -32,5 +32,5 @@ def code_review_agent(state: StudioState):
     return {
         "review_issues": [issue.model_dump() for issue in review.issues],
         "needs_changes": not approved,
-        "workflow_status": "review_approved" if approved else "review_needs_repair",
+        "workflow_status": ["review_approved"] if approved else ["review_needs_repair"],
     }

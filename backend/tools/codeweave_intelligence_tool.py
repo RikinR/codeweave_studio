@@ -16,3 +16,4 @@ class CodeweaveIntelligenceTool:
     def update_change_files(self):
         """remakes embeddings for these files and deletes old one"""
         return ["files updated"]
+    
