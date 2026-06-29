@@ -5,7 +5,9 @@ from agents.testing.model import TestingModel
 from agents.testing.prompt import SYSTEM_PROMPT
 from schemas.testing import TestResult, TestsGeneratedOutput
 from state import StudioState
+from tools.code_read_write_tool import CodeWriteTool
 
+tool = CodeWriteTool()
 
 class TestingAgentOutput(BaseModel):
     tests_generated: TestsGeneratedOutput
@@ -14,7 +16,7 @@ class TestingAgentOutput(BaseModel):
 
 def testing_agent(state: StudioState):
     integrated_state = state.get("integrated_state") or {}
-    patches = state.get("patches") or {}
+    patches = state.get("integrated_patches") or {}
 
     if integrated_state.get("integration_blocked"):
         return {
@@ -70,6 +72,10 @@ def testing_agent(state: StudioState):
         code_files_modified_or_changed=state.get("code_files_modified_or_changed"),
         plan=state.get("plan"),
         goals=state.get("goals"),
+        frontend_tasks = state.get("frontend_tasks"),
+        backend_tasks = state.get("backend_tasks"),
+        database_tasks = state.get("database_tasks"),
+        relevent_files = tool.read_file()
     )
     output = invoke_and_parse(model, SYSTEM_PROMPT, user_message, TestingAgentOutput)
     has_failures = (

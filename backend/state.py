@@ -43,3 +43,6 @@ class StudioState(TypedDict, total=False):
     current_branch: str
     repository_root: str
     needs_changes: bool
+    integrated_patches: dict[str, dict]
+    iteration_count: int
+    max_iterations: int

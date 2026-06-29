@@ -5,10 +5,20 @@ from agents.tasks.agent import task_divider_agent
 from agents.frontend.agent import frontend_agent
 from agents.backend.agent import backend_agent
 from agents.database.agent import database_agent
+from agents.integration.agent import integration_agent
+from agents.testing.agent import testing_agent
 from langgraph.graph import START , END , StateGraph
 from state import StudioState
 
 def changes_in_plan(state: StudioState):
+   
+    iteration_count = state.get("iteration_count", 0)
+    max_iterations = state.get("max_iterations", 2) 
+    
+    if iteration_count >= max_iterations:
+        print(f"⚠️ Max iterations ({max_iterations}) reached. Proceeding to tasks with current plan.")
+        return "tasks"
+    
     if state.get("needs_changes", False):
         return "review_plan"
     return "tasks"
@@ -22,6 +32,8 @@ graph.add_node("task_divider_agent",task_divider_agent)
 graph.add_node("frontend_implementation_agent",frontend_agent)
 graph.add_node("backend_implementation_agent",backend_agent)
 graph.add_node("database_implementation_agent",database_agent)
+graph.add_node("integration_agent",integration_agent)
+graph.add_node("testing_agent",testing_agent)
 
 graph.add_edge(START,"goal_agent")
 graph.add_edge("goal_agent","planner_agent")
@@ -37,9 +49,11 @@ graph.add_conditional_edges(
 graph.add_edge("task_divider_agent","frontend_implementation_agent")
 graph.add_edge("task_divider_agent","backend_implementation_agent")
 graph.add_edge("task_divider_agent","database_implementation_agent")
-graph.add_edge("frontend_implementation_agent",END)
-graph.add_edge("backend_implementation_agent",END)
-graph.add_edge("database_implementation_agent",END)
+graph.add_edge("frontend_implementation_agent","integration_agent")
+graph.add_edge("backend_implementation_agent","integration_agent")
+graph.add_edge("database_implementation_agent","integration_agent")
+graph.add_edge("integration_agent","testing_agent")
+graph.add_edge("testing_agent",END)
 
 app = graph.compile()
 
@@ -58,7 +72,12 @@ if __name__ == "__main__":
     print(f"Wrote graph to {output.resolve()}")
     
     #context will be updated dynamically in future we will need only user query
-    temp_state : StudioState = {"user_request":"implement authentication in system","relevent_context":{"files":["auth.py","login_screen.dart"]}}
+    temp_state: StudioState = {
+        "user_request": "implement authentication in system",
+        "relevent_context": {"files": ["auth.py", "login_screen.dart"]},
+        "iteration_count": 0,
+        "max_iterations": 2, 
+    }
 
     result = app.invoke(temp_state)
     print("\nfinal state\n")

@@ -1,4 +1,5 @@
 #dummy implementation for now!
+from state import StudioState
 
 class CodeWriteTool:
     def read_file(self):
@@ -6,8 +7,8 @@ class CodeWriteTool:
         print("called read file function")
         return "dummy_file"
     
-    def write_file(self,content):
-        print("called write file function with content : ")
-        print(content)
+    def write_file(self,patch):
+        print("called write file function with final patched : ")
+        print(patch)
         return "successfully wrote into file"
 

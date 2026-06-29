@@ -73,6 +73,11 @@ def invoke_and_parse(
             {"role": "user", "content": user_message},
         ]
     )
+    print("\n\nTOKENS STATUS:")
+    usage = response.usage
+    print(f"Prompt Tokens: {usage.prompt_tokens}")
+    print(f"Completion Tokens: {usage.completion_tokens}")
+    print(f"Total Tokens: {usage.total_tokens}")
     content = response.choices[0].message.content
     if content is None:
         raise ValueError("API returned no content")
@@ -164,6 +169,6 @@ def finalize_implementation_output(result: Any):
 def skipped_lane_response(result_key: str, workflow_status: str) -> dict:
     return {
         result_key: EMPTY_IMPLEMENTATION_RESULT,
-        "patches": {},
+        "patches": [],
         "workflow_status": [workflow_status],
     }

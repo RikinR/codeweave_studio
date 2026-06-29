@@ -36,7 +36,6 @@ def frontend_agent(state: StudioState):
     time.sleep(30)
     result = invoke_and_parse(model, SYSTEM_PROMPT, user_message, ImplementationResult)
     frontend_result, patches = finalize_implementation_output(result)
-    tool.write_file(frontend_result)
     print("PATCHES TYPE:", type(patches))
     print("PATCHES:", patches)
     return {
