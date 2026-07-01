@@ -1,3 +1,5 @@
+import time
+
 from agents.common import (
     build_user_message,
     invalid_patch_paths,
@@ -16,6 +18,7 @@ tool = CodeWriteTool()
 
 
 def integration_agent(state: StudioState):
+    print("\nINTEGRATION AGENT\n");
     model = IntegrationModel()
     lane_patches = patches_to_dict(state.get("patches", []))
     user_message = build_user_message(
@@ -25,6 +28,7 @@ def integration_agent(state: StudioState):
         patches=lane_patches,
         code_files_modified_or_changed=state.get("code_files_modified_or_changed"),
     )
+    time.sleep(30)
     result = invoke_and_parse(model, SYSTEM_PROMPT, user_message, IntegrationOutput)
 
     valid_output, rejected = sanitize_patch_list(result.patches)

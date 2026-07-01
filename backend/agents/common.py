@@ -172,3 +172,10 @@ def skipped_lane_response(result_key: str, workflow_status: str) -> dict:
         "patches": [],
         "workflow_status": [workflow_status],
     }
+
+def should_force_proceed(state: StudioState, max_iterations: int = 2) -> bool:
+    repair_iteration = state.get("repair_iteration_count", 0)
+    if repair_iteration >= max_iterations:
+        print(f"\n Max repair iterations ({max_iterations}) reached. Forcing proceed.")
+        return True
+    return False

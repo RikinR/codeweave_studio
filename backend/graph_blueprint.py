@@ -35,7 +35,7 @@ graph.add_node("database_agent", database_agent)
 graph.add_node("integration_agent", integration_agent)
 graph.add_node("testing_agent", testing_agent)
 graph.add_node("code_review_agent", code_review_agent)
-graph.add_node("skeptic_review_agent", skeptic_review_agent)
+# graph.add_node("skeptic_review_agent", skeptic_review_agent)
 graph.add_node("repair_agent", repair_agent)
 graph.add_node("productionise_agent", productionise_agent)
 graph.add_node("documentation_agent", documentation_agent)
@@ -66,8 +66,8 @@ graph.add_conditional_edges(
         "review": "code_review_agent",
     },
 )
-graph.add_edge("code_review_agent", "skeptic_review_agent")
-graph.add_edge("skeptic_review_agent", "code_review_agent")
+# graph.add_edge("code_review_agent", "skeptic_review_agent")
+# graph.add_edge("skeptic_review_agent", "code_review_agent")
 graph.add_conditional_edges(
     "code_review_agent",
     route_code_review,

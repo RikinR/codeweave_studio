@@ -46,3 +46,6 @@ class StudioState(TypedDict, total=False):
     integrated_patches: dict[str, dict]
     iteration_count: int
     max_iterations: int
+    repair_iteration_count: int
+    max_repair_iterations: int
+    force_proceed: bool

@@ -7,6 +7,10 @@ from agents.backend.agent import backend_agent
 from agents.database.agent import database_agent
 from agents.integration.agent import integration_agent
 from agents.testing.agent import testing_agent
+from agents.repair.agent import repair_agent
+from agents.code_review.agent import code_review_agent
+from agents.productionise.agent import productionise_agent
+from agents.documentation.agent import documentation_agent
 from langgraph.graph import START , END , StateGraph
 from state import StudioState
 
@@ -23,6 +27,16 @@ def changes_in_plan(state: StudioState):
         return "review_plan"
     return "tasks"
 
+def done_testing(state :StudioState):
+    if state.get("needs_changes", False):
+        return "repair"
+    return "review"
+
+def route_code_review(state: StudioState):
+    if state.get("needs_changes", False):
+        return "repair"
+    return "productionise"
+
 graph = StateGraph(StudioState)
 
 graph.add_node("goal_agent",goal_agent)
@@ -34,6 +48,10 @@ graph.add_node("backend_implementation_agent",backend_agent)
 graph.add_node("database_implementation_agent",database_agent)
 graph.add_node("integration_agent",integration_agent)
 graph.add_node("testing_agent",testing_agent)
+graph.add_node("repair_agent",repair_agent)
+graph.add_node("code_review_agent",code_review_agent)
+graph.add_node("production_agent",productionise_agent)
+graph.add_node("documentation_agent",documentation_agent)
 
 graph.add_edge(START,"goal_agent")
 graph.add_edge("goal_agent","planner_agent")
@@ -53,7 +71,25 @@ graph.add_edge("frontend_implementation_agent","integration_agent")
 graph.add_edge("backend_implementation_agent","integration_agent")
 graph.add_edge("database_implementation_agent","integration_agent")
 graph.add_edge("integration_agent","testing_agent")
-graph.add_edge("testing_agent",END)
+graph.add_conditional_edges(
+    "testing_agent",
+    done_testing,
+    {
+        "repair": "repair_agent",
+        "review": "code_review_agent",
+    },
+)
+graph.add_edge("repair_agent","testing_agent")
+graph.add_conditional_edges(
+    "code_review_agent",
+    route_code_review,
+    {
+        "repair": "repair_agent",
+        "productionise": "production_agent",
+    },
+)
+graph.add_edge("production_agent","documentation_agent")
+graph.add_edge("documentation_agent",END)
 
 app = graph.compile()
 

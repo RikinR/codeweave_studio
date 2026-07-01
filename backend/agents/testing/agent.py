@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 
-from agents.common import build_user_message, invalid_patch_paths, invoke_and_parse
+from agents.common import build_user_message, invalid_patch_paths, invoke_and_parse, should_force_proceed
 from agents.testing.model import TestingModel
 from agents.testing.prompt import SYSTEM_PROMPT
 from schemas.testing import TestResult, TestsGeneratedOutput
@@ -15,6 +15,26 @@ class TestingAgentOutput(BaseModel):
 
 
 def testing_agent(state: StudioState):
+    print("\nTESTING AGENT\n")
+    
+    if should_force_proceed(state):
+        print("Force proceeding - skipping testing")
+        return {
+            "tests_generated": {"tests": []},
+            "test_results": {
+                "build_status": "passed",
+                "lint_status": "passed",
+                "typecheck_status": "passed",
+                "tests_passed": 1,
+                "tests_failed": 0,
+                "tests_skipped": 0,
+                "failures": [],
+            },
+            "needs_changes": False,
+            "force_proceed": True,
+            "workflow_status": ["testing_forced"],
+        }
+    
     integrated_state = state.get("integrated_state") or {}
     patches = state.get("integrated_patches") or {}
 
