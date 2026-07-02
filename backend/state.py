@@ -1,4 +1,4 @@
-from typing import TypedDict, Annotated
+from typing import TypedDict, Annotated, Optional, List, Dict, Any
 from operator import add
 
 class StudioState(TypedDict, total=False):
@@ -6,46 +6,53 @@ class StudioState(TypedDict, total=False):
     repository_name: str
     repository_language: str
     repository_framework: str
-    
-    user_request: str
-    goals : dict
-    relevent_context : dict
-    working_context : dict
-    plan : dict
-    review_plan :str
-    frontend_tasks : dict
-    backend_tasks : dict
-    database_tasks : dict
-    frontend_result : dict
-    backend_result : dict
-    database_result : dict
-    integrated_state: dict
-    tests_generated : dict
-    test_results: dict
-    review_issues: list
-    skeptic_findings: list
-    repair_history: list
-    current_repair_reason: str
-    production_changes: dict
-    docs: dict
-    iteration_count: int
-    code_files_modified_or_changed : list
-    user_changes: dict
-    conversation_history: list
-    decision_memory: list
-    active_task: dict
-    patches: Annotated[list, add]
-    agent_trace: list
-    token_usage: dict
-    metrics: dict
-    failure_reason: str | None
-    workflow_status: Annotated[list[str], add]
-    current_branch: str
     repository_root: str
+
+    current_branch: str
+    user_request: str
+    user_changes: Dict[str, Any]
+
+    goals: Dict[str, Any]
+    plan: Dict[str, Any]
+    working_context: Dict[str, Any] 
+
+    frontend_tasks: Dict[str, Any]
+    backend_tasks: Dict[str, Any]
+    database_tasks: Dict[str, Any]
+
+    frontend_result: Dict[str, Any]
+    backend_result: Dict[str, Any]
+    database_result: Dict[str, Any]
+
+    integrated_state: Dict[str, Any]
+    integrated_patches: Dict[str, Dict[str, Any]]
+
+    review_plan: str
+    review_issues: List[Dict[str, Any]]
     needs_changes: bool
-    integrated_patches: dict[str, dict]
+    force_proceed: bool
+
+    tests_generated: Dict[str, Any]
+    test_results: Dict[str, Any]
+
+    patches: Annotated[List[Dict[str, Any]], add]
+    code_files_modified_or_changed: List[str]
+    conversation_history: Annotated[List[Dict[str, Any]], add]
+    decision_memory: Annotated[List[Dict[str, Any]], add]
+    agent_trace: Annotated[List[Dict[str, Any]], add]
+    repair_history: Annotated[List[Dict[str, Any]], add]
+
     iteration_count: int
     max_iterations: int
     repair_iteration_count: int
     max_repair_iterations: int
-    force_proceed: bool
+
+    workflow_status: Annotated[List[str], add]
+    token_usage: int
+    metrics: Dict[str, Any]
+    failure_reason: Optional[str]
+    
+    active_task: Dict[str, Any]
+    current_repair_reason: str
+    production_changes: Dict[str, Any]
+    docs: Dict[str, Any]

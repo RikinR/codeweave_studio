@@ -1,4 +1,7 @@
 from pydantic import BaseModel
+from typing import List, Dict, Any
+from schemas.implementaion import PatchRaw
+
 
 class RepairRecord(BaseModel):
     issue: str
@@ -6,6 +9,10 @@ class RepairRecord(BaseModel):
     fix: str
     verification: str
 
+
 class RepairResult(BaseModel):
-    records: list[RepairRecord]
-    remaining_issues: list[str]
+    records: List[RepairRecord]
+    remaining_issues: List[str]
+    patches: List[PatchRaw]
+    integrated_state: Dict[str, Any]
+    current_repair_reason: str

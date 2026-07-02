@@ -23,9 +23,11 @@ def documentation_agent(state: StudioState):
         goals=state.get("goals"),
         patches=patches_context,
         test_results=state.get("test_results"),
+        decision_memory=state.get("decision_memory"),
+        conversation_history=state.get("conversation_history"),
     )
     time.sleep(30)
-    docs = invoke_and_parse(model, SYSTEM_PROMPT, user_message, DocumentationOutput)
+    docs = invoke_and_parse(model, SYSTEM_PROMPT, user_message, DocumentationOutput, state)
     return {
         "docs": docs.model_dump(),
         "workflow_status": ["completed"],

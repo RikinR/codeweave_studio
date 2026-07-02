@@ -18,26 +18,36 @@ tool = CodeWriteTool()
 def frontend_agent(state: StudioState):
     print("\nFRONTEND IMPLEMENTATION AGENT\n")
     print(state.get("frontend_tasks"))
+    
     if lane_tasks_empty(state.get("frontend_tasks")):
         return skipped_lane_response("frontend_result", "frontend_skipped")
 
+    is_repair = state.get("repair_iteration_count", 0) > 0
+    
     model = FrontendModel()
     user_message = build_user_message(
         frontend_tasks=state.get("frontend_tasks"),
-        related_files = tool.read_file(),
-        #working_context=state.get("working_context"),
+        related_files=tool.read_file(),
         relevent_context=state.get("relevent_context"),
         plan=state.get("plan"),
-        # decision_memory=state.get("decision_memory"),
-        # backend_result=state.get("backend_result"),
-        # repository_language=state.get("repository_language"),
-        # repository_framework=state.get("repository_framework"),
+        goals=state.get("goals"),
+        decision_memory=state.get("decision_memory"),
+        conversation_history=state.get("conversation_history"),
+        repository_language=state.get("repository_language"),
+        repository_framework=state.get("repository_framework"),
+        backend_result=state.get("backend_result"),
+        test_results=state.get("test_results"),
+        is_repair=is_repair,
+        current_repair_reason=state.get("current_repair_reason"),
+        repair_history=state.get("repair_history"),
+        integrated_state=state.get("integrated_state"),
     )
     time.sleep(30)
-    result = invoke_and_parse(model, SYSTEM_PROMPT, user_message, ImplementationResult)
+    result = invoke_and_parse(model, SYSTEM_PROMPT, user_message, ImplementationResult, state)
     frontend_result, patches = finalize_implementation_output(result)
     print("PATCHES TYPE:", type(patches))
     print("PATCHES:", patches)
+    
     return {
         "frontend_result": frontend_result,
         "patches": patches,

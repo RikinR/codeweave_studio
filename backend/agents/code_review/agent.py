@@ -8,9 +8,7 @@ from state import StudioState
 from tools.code_read_write_tool import CodeWriteTool
 
 tool = CodeWriteTool()
-
 BLOCKING_SEVERITIES = ("medium", "high", "critical")
-
 
 def code_review_agent(state: StudioState):
     print("\nCODE REVIEW AGENT\n")
@@ -29,7 +27,7 @@ def code_review_agent(state: StudioState):
         return {
             "review_issues": state.get("review_issues") or [],
             "needs_changes": True,
-            "workflow_status": "review_needs_repair",
+            "workflow_status": ["review_needs_repair"],
         }
 
     model = CodeReviewModel()
@@ -42,10 +40,15 @@ def code_review_agent(state: StudioState):
         patches=state.get("integrated_patches"),
         review_issues=state.get("review_issues"),
         skeptic_findings=state.get("skeptic_findings"),
-        relevant_files=relevant_files
+        relevant_files=relevant_files,
+        decision_memory=state.get("decision_memory"),
+        conversation_history=state.get("conversation_history"),
+        repair_history=state.get("repair_history"),
+        repair_iteration_count=state.get("repair_iteration_count", 0),
+        max_repair_iterations=state.get("max_repair_iterations", 2),
     )
     time.sleep(30)
-    review = invoke_and_parse(model, SYSTEM_PROMPT, user_message, ReviewResult)
+    review = invoke_and_parse(model, SYSTEM_PROMPT, user_message, ReviewResult, state)
     blocking = any(issue.severity in BLOCKING_SEVERITIES for issue in review.issues)
     approved = review.approved and not blocking
     return {

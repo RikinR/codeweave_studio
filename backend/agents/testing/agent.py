@@ -1,6 +1,11 @@
 from pydantic import BaseModel
 
-from agents.common import build_user_message, invalid_patch_paths, invoke_and_parse, should_force_proceed
+from agents.common import (
+    build_user_message,
+    invalid_patch_paths,
+    invoke_and_parse,
+    should_force_proceed,
+)
 from agents.testing.model import TestingModel
 from agents.testing.prompt import SYSTEM_PROMPT
 from schemas.testing import TestResult, TestsGeneratedOutput
@@ -12,7 +17,6 @@ tool = CodeWriteTool()
 class TestingAgentOutput(BaseModel):
     tests_generated: TestsGeneratedOutput
     test_results: TestResult
-
 
 def testing_agent(state: StudioState):
     print("\nTESTING AGENT\n")
@@ -92,12 +96,16 @@ def testing_agent(state: StudioState):
         code_files_modified_or_changed=state.get("code_files_modified_or_changed"),
         plan=state.get("plan"),
         goals=state.get("goals"),
-        frontend_tasks = state.get("frontend_tasks"),
-        backend_tasks = state.get("backend_tasks"),
-        database_tasks = state.get("database_tasks"),
-        relevent_files = tool.read_file()
+        frontend_tasks=state.get("frontend_tasks"),
+        backend_tasks=state.get("backend_tasks"),
+        database_tasks=state.get("database_tasks"),
+        relevent_files=tool.read_file(),
+        decision_memory=state.get("decision_memory"),
+        conversation_history=state.get("conversation_history"),
+        test_results=state.get("test_results"),
+        repair_history=state.get("repair_history"),
     )
-    output = invoke_and_parse(model, SYSTEM_PROMPT, user_message, TestingAgentOutput)
+    output = invoke_and_parse(model, SYSTEM_PROMPT, user_message, TestingAgentOutput, state)
     has_failures = (
         output.test_results.build_status == "failed"
         or output.test_results.lint_status == "failed"

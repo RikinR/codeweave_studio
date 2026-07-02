@@ -26,6 +26,7 @@ def planner_agent(state: StudioState):
     model = PlannerModel()
     user_message = build_user_message(
         goals=state.get("goals"),
+        user_request=state.get("user_request"),
         related_files=tool.find_related_files(),
         repository_map=tool.get_repository_map(),
         dependency_graph=tool.get_dependency_graph(),
@@ -33,16 +34,21 @@ def planner_agent(state: StudioState):
         review_issues=state.get("review_issues"),
         review_plan=state.get("review_plan"),
         relevent_context=state.get("relevent_context"),
-        iteration_count=iteration_count, 
+        iteration_count=iteration_count,
+        max_iterations=state.get("max_iterations", 5),
+        decision_memory=state.get("decision_memory"),
+        conversation_history=state.get("conversation_history"),
+        repository_language=state.get("repository_language"),
+        repository_framework=state.get("repository_framework"),
     )
     time.sleep(30)
-    plan = invoke_and_parse(model, SYSTEM_PROMPT, user_message, PlanOutput)
+    plan = invoke_and_parse(model, SYSTEM_PROMPT, user_message, PlanOutput, state)
     new_iteration = iteration_count + 1
     
     return {
         "plan": plan.model_dump(),
         "workflow_status": ["plan_generated"],
-        "needs_changes": False, 
+        "needs_changes": False,
         "iteration_count": new_iteration,
-        "review_issues": [], 
+        "review_issues": [],
     }

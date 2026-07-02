@@ -18,8 +18,9 @@ def goal_agent(state: StudioState):
         repository_language=state.get("repository_language"),
         repository_framework=state.get("repository_framework"),
         user_changes=state.get("user_changes"),
+        decision_memory=state.get("decision_memory"),
     )
-    goal = invoke_and_parse(model, SYSTEM_PROMPT, user_message, GoalOutput)
+    goal = invoke_and_parse(model, SYSTEM_PROMPT, user_message, GoalOutput, state)
     return {
         "goals": goal.model_dump(),
         "workflow_status": ["goal_completed"],

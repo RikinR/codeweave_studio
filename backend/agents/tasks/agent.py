@@ -8,7 +8,7 @@ from state import StudioState
 
 
 def task_divider_agent(state: StudioState):
-    print("\n TASK DIVIDER AGENT \n")
+    print("\nTASK DIVIDER AGENT \n")
     print(state.get("plan"))
     print(state.get("relevent_context"))
     model = TaskDividerModel()
@@ -16,9 +16,10 @@ def task_divider_agent(state: StudioState):
         plan=state.get("plan"),
         goals=state.get("goals"),
         relevent_context=state.get("relevent_context"),
+        decision_memory=state.get("decision_memory"),
     )
     time.sleep(30)
-    tasks = invoke_and_parse(model, SYSTEM_PROMPT, user_message, TaskDivisionOutput)
+    tasks = invoke_and_parse(model, SYSTEM_PROMPT, user_message, TaskDivisionOutput, state)
     return {
         "frontend_tasks": {
             "tasks": [task.model_dump() for task in tasks.frontend_tasks],

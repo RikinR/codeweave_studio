@@ -11,8 +11,10 @@ from agents.repair.agent import repair_agent
 from agents.code_review.agent import code_review_agent
 from agents.productionise.agent import productionise_agent
 from agents.documentation.agent import documentation_agent
+from agents.state_utils import validate_state , get_state_summary , cleanup_state
 from langgraph.graph import START , END , StateGraph
 from state import StudioState
+from typing import cast
 
 def changes_in_plan(state: StudioState):
    
@@ -97,27 +99,97 @@ if __name__ == "__main__":
     import subprocess
     import sys
     from pathlib import Path
+    import json
+    from datetime import datetime
 
     output_dir = Path(__file__).parent / "outputs"
     output_dir.mkdir(parents=True, exist_ok=True)
-
     output = output_dir / "graph_implementation.png"
-
     output.write_bytes(app.get_graph(xray=True).draw_mermaid_png())
-
     print(f"Wrote graph to {output.resolve()}")
-    
-    #context will be updated dynamically in future we will need only user query
+
     temp_state: StudioState = {
-        "user_request": "implement authentication in system",
-        "relevent_context": {"files": ["auth.py", "login_screen.dart"]},
+        "repository_id": "test-repo",
+        "repository_name": "test-repo",
+        "repository_language": "python",
+        "repository_framework": "fastapi",
+        "repository_root": "/tmp/test-repo",
+        "current_branch": "main",
+        "user_request": "Implement JWT authentication with refresh tokens and user login",
+        "user_changes": {},
+        "working_context": {
+            "existing_files": ["auth.py", "models/user.py", "routes/auth.py"],
+            "dependencies": ["jwt", "passlib", "python-dotenv"],
+            "existing_tests": ["tests/test_auth.py"],
+            "database": "postgresql",
+            "orm": "sqlalchemy",
+        },
+        "goals": {},
+        "plan": {},
+        "frontend_tasks": {},
+        "backend_tasks": {},
+        "database_tasks": {},
+        "frontend_result": {},
+        "backend_result": {},
+        "database_result": {},
+        "integrated_state": {},
+        "integrated_patches": {},
+        "review_plan": "",
+        "review_issues": [],
+        "needs_changes": False,
+        "force_proceed": False,
+        "tests_generated": {},
+        "test_results": {},
+        "patches": [],
+        "code_files_modified_or_changed": [],
+        "conversation_history": [],
+        "decision_memory": [],
+        "agent_trace": [],
+        "repair_history": [],
         "iteration_count": 0,
-        "max_iterations": 2, 
+        "max_iterations": 3,
+        "repair_iteration_count": 0,
+        "max_repair_iterations": 2,
+        "workflow_status": [],
+        "token_usage": 0,
+        "metrics": {},
+        "failure_reason": None,
+        "active_task": {},
+        "current_repair_reason": "",
+        "production_changes": {},
+        "docs": {},
     }
 
-    result = app.invoke(temp_state)
-    print("\nfinal state\n")
-    print(result)
+    temp_state = validate_state(temp_state)
+    
+
+    print("\n---STARTING WORKFLOW---\n")
+    print(f"\nInitial State Summary:\n{get_state_summary(temp_state)}\n")
+
+
+    start_time = datetime.now()
+    
+    try:
+        result = app.invoke(temp_state)
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        
+        print("\n---WORKFLOW COMPLETE---\n")
+        print(f"\nDuration: {duration:.2f} seconds")
+        print(f"\nFinal State Summary:\n{get_state_summary(cast(StudioState, result))}")
+        print(f"\nToken Usage: {result.get('token_usage', 0)}")
+        
+        results_file = output_dir / f"workflow_result_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        clean_result = {k: v for k, v in result.items() if k not in ['conversation_history', 'decision_memory']}
+        
+        with open(results_file, 'w') as f:
+            json.dump(clean_result, f, indent=2, default=str)
+        print(f"Results saved to: {results_file}")
+        
+    except Exception as e:
+        print(f"\n => Workflow failed with error: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
     if sys.platform == "darwin":
         subprocess.run(["open", output], check=False)

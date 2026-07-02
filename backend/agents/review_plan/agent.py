@@ -13,12 +13,10 @@ def review_planner_agent(state: StudioState):
     print("\nREVIEW PLANNER AGENT\n")
     
     iteration_count = state.get("iteration_count", 0) + 1
-
     is_first_review = iteration_count == 1
     
-   
     if state.get("needs_changes") and not is_first_review:
-        print("✅ Plan already reviewed and revised - skipping re-review")
+        print("\n => Plan already reviewed and revised - skipping re-review")
         return {
             "needs_changes": False,
             "workflow_status": ["plan_approved"],
@@ -38,16 +36,20 @@ def review_planner_agent(state: StudioState):
         dependency_graph=tool.get_dependency_graph(),
         related_files=tool.find_related_files(),
         relevent_context=state.get("relevent_context"),
-        iteration_count=iteration_count, 
-        is_first_review=is_first_review, 
+        iteration_count=iteration_count,
+        is_first_review=is_first_review,
+        decision_memory=state.get("decision_memory"),
+        conversation_history=state.get("conversation_history"),
+        review_issues=state.get("review_issues"),
+        review_plan=state.get("review_plan"),
     )
     time.sleep(30)
-    review = invoke_and_parse(model, SYSTEM_PROMPT, user_message, ReviewPlanOutput)
+    review = invoke_and_parse(model, SYSTEM_PROMPT, user_message, ReviewPlanOutput, state)
     
     if not is_first_review and review.issues:
         critical_issues = [i for i in review.issues if i.severity == "critical"]
         if not critical_issues:
-            print("✅ Only low/medium issues remain - approving plan")
+            print("\n => Only low/medium issues remain - approving plan")
             return {
                 "review_plan": review.review_plan,
                 "review_issues": [issue.model_dump() for issue in review.issues],

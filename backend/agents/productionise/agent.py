@@ -25,8 +25,11 @@ def productionise_agent(state: StudioState):
         plan=state.get("plan"),
         force_proceed=force_proceed,
         repair_history=state.get("repair_history"),
+        goals=state.get("goals"),
+        decision_memory=state.get("decision_memory"),
+        conversation_history=state.get("conversation_history"),
     )
-    result = invoke_and_parse(model, SYSTEM_PROMPT, user_message, ProductionChangesOutput)
+    result = invoke_and_parse(model, SYSTEM_PROMPT, user_message, ProductionChangesOutput, state)
 
     polish_result = ImplementationResult(
         summary=result.summary,

@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Any, TypeVar
+from typing import Any, TypeVar , Dict
 from state import StudioState
 
 from pydantic import BaseModel, ValidationError
@@ -66,6 +66,7 @@ def invoke_and_parse(
     system_prompt: str,
     user_message: str,
     output_model: type[T],
+    state : StudioState
 ) -> T:
     response = model.invoke(
         [
@@ -78,6 +79,7 @@ def invoke_and_parse(
     print(f"Prompt Tokens: {usage.prompt_tokens}")
     print(f"Completion Tokens: {usage.completion_tokens}")
     print(f"Total Tokens: {usage.total_tokens}")
+    state["token_usage"] = state.get("token_usage", 0) + usage.total_tokens
     content = response.choices[0].message.content
     if content is None:
         raise ValueError("API returned no content")
@@ -179,3 +181,37 @@ def should_force_proceed(state: StudioState, max_iterations: int = 2) -> bool:
         print(f"\n Max repair iterations ({max_iterations}) reached. Forcing proceed.")
         return True
     return False
+
+def build_context_summary(state: StudioState, agent_name: str) -> str:
+    parts = []
+    
+    goals = state.get("goals")
+    if goals:
+        parts.append(f"Goals: {goals.get('summary', 'Not specified')}")
+    
+    plan = state.get("plan")
+    if plan:
+        parts.append(f"Plan: {plan.get('summary', '')[:200]}...")
+    
+    iteration = state.get("iteration_count", 0)
+    parts.append(f"Iteration: {iteration}")
+    
+    repair_iteration = state.get("repair_iteration_count", 0)
+    if repair_iteration > 0:
+        parts.append(f"Repair attempt: {repair_iteration}")
+    
+    test_results = state.get("test_results", {})
+    if test_results:
+        passed = test_results.get("tests_passed", 0)
+        failed = test_results.get("tests_failed", 0)
+        parts.append(f"Tests: {passed} passed, {failed} failed")
+    
+    return "\n".join(parts)
+
+def get_agent_specific_context(state: StudioState, agent_name: str, memory) -> Dict:
+    return {
+        "history": memory.get_relevant_history(state, agent_name, limit=5),
+        "decisions": memory.get_decision_memory(state, agent_name),
+        "trace": memory.get_execution_trace(state, agent_name),
+        "summary": build_context_summary(state, agent_name)
+    }

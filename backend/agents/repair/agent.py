@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import List, Union
 
 from agents.common import (
     build_user_message,
@@ -16,9 +17,10 @@ from state import StudioState
 
 
 class RepairAgentOutput(RepairResult):
-    patches: list[PatchRaw]
+    patches: List[PatchRaw]
     integrated_state: dict
     current_repair_reason: str
+    remaining_issues: List[str]
 
 
 def repair_agent(state: StudioState):
@@ -56,8 +58,12 @@ def repair_agent(state: StudioState):
         iteration_count=state.get("iteration_count"),
         repair_iteration_count=repair_iteration,
         max_repair_iterations=max_repair_iterations,
+        decision_memory=state.get("decision_memory"),
+        conversation_history=state.get("conversation_history"),
+        plan=state.get("plan"),
+        goals=state.get("goals"),
     )
-    output = invoke_and_parse(model, SYSTEM_PROMPT, user_message, RepairAgentOutput)
+    output = invoke_and_parse(model, SYSTEM_PROMPT, user_message, RepairAgentOutput, state)
 
     repair_result = ImplementationResult(
         summary=output.current_repair_reason,

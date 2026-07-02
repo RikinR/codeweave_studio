@@ -8,3 +8,4 @@ backend/infra/codeweave/data/
 backend/infra/codeweave/logs/
 .DS_Store
 working_notes.txt
+backend/outputs/*.json

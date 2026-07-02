@@ -16,9 +16,8 @@ from tools.code_read_write_tool import CodeWriteTool
 
 tool = CodeWriteTool()
 
-
 def integration_agent(state: StudioState):
-    print("\nINTEGRATION AGENT\n");
+    print("\nINTEGRATION AGENT\n")
     model = IntegrationModel()
     lane_patches = patches_to_dict(state.get("patches", []))
     user_message = build_user_message(
@@ -27,9 +26,14 @@ def integration_agent(state: StudioState):
         database_result=state.get("database_result"),
         patches=lane_patches,
         code_files_modified_or_changed=state.get("code_files_modified_or_changed"),
+        decision_memory=state.get("decision_memory"),
+        conversation_history=state.get("conversation_history"),
+        plan=state.get("plan"),
+        goals=state.get("goals"),
+        integrated_state=state.get("integrated_state"),
     )
     time.sleep(30)
-    result = invoke_and_parse(model, SYSTEM_PROMPT, user_message, IntegrationOutput)
+    result = invoke_and_parse(model, SYSTEM_PROMPT, user_message, IntegrationOutput, state)
 
     valid_output, rejected = sanitize_patch_list(result.patches)
     llm_patches = patches_to_dict(valid_output)
@@ -48,21 +52,21 @@ def integration_agent(state: StudioState):
     merged_files = list(
         dict.fromkeys(result.merged_files or list(final_patches.keys()))
     )
-    # for now write into files here in future create seperate patching agent that will use studio state integrated patched to write into file
     tool.write_file(state)
+    
     return {
-    "integrated_state": {
-        "summary": result.summary,
-        "conflict_resolutions": result.conflict_resolutions,
-        "contract_validations": result.contract_validations,
-        "integration_blocked": integration_blocked,
-    },
-    "integrated_patches": final_patches,
-    "code_files_modified_or_changed": merged_files,
-    "failure_reason": failure_reason,
-    "workflow_status": (
-        ["integration_blocked"]
-        if integration_blocked
-        else ["integration_completed"]
-    ),
-}
+        "integrated_state": {
+            "summary": result.summary,
+            "conflict_resolutions": result.conflict_resolutions,
+            "contract_validations": result.contract_validations,
+            "integration_blocked": integration_blocked,
+        },
+        "integrated_patches": final_patches,
+        "code_files_modified_or_changed": merged_files,
+        "failure_reason": failure_reason,
+        "workflow_status": (
+            ["integration_blocked"]
+            if integration_blocked
+            else ["integration_completed"]
+        ),
+    }
